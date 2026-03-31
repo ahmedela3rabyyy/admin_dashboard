@@ -1,11 +1,10 @@
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "debian-openssl-3.0.x"]  // ✅ للتشغيل على Railway Linux
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")  // ✅ من env variable
+  url      = "file:./dev.db"
 }
 
 model Store {
@@ -24,6 +23,13 @@ model Store {
   salaryPayments       SalaryPayment[]
   storeSuppliers       StoreSupplier[]
   supplierTransactions SupplierTransaction[]
+}
+
+// ✅ جدول الأجهزة المحظورة عن بُعد
+model BlockedDevice {
+  machineId  String   @id
+  reason     String?
+  blockedAt  DateTime @default(now())
 }
 
 model Category {
