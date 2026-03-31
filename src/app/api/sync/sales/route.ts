@@ -18,41 +18,59 @@ export async function POST(req: Request) {
 
     for (const sale of sales) {
       const incomingDeviceId = sale.device_id || deviceId;
-      await prisma.sale.upsert({
-        where: { storeId_id: { storeId, id: sale.id } },
-        update: {
-          totalAmount: sale.total_amount,
-          discount: sale.discount || 0.0,
-          finalAmount: sale.final_amount,
-          paymentMethod: sale.payment_method || 'CASH',
-          notes: sale.notes,
-          invoiceDate: new Date(sale.invoice_date || new Date()),
-          deviceId: incomingDeviceId, // ✅  
-        },
-        create: {
-          id: sale.id,
-          storeId,
-          totalAmount: sale.total_amount,
-          discount: sale.discount || 0.0,
-          finalAmount: sale.final_amount,
-          paymentMethod: sale.payment_method || 'CASH',
-          notes: sale.notes,
-          invoiceDate: new Date(sale.invoice_date || new Date()),
-          isSynced: true,
-          deviceId: incomingDeviceId, // ✅
-          items: {
-            create: sale.items.map((item: any) => ({
-              productId: item.product_id,
-              quantity: item.quantity,
-              unitBuyPriceAtSale: item.unit_buy_price_at_sale,
-              unitSellPriceAtSale: item.unit_sell_price_at_sale,
-              discountAmount: item.discount_amount || 0.0,
-              totalPrice: item.total_price,
-            }))
+      try {
+        // ✅ التحقق من وجود المنتجات أولاً قبل إنشاء الفاتورة
+        const validItems = [];
+        for (const item of (sale.items || [])) {
+          const productExists = await prisma.product.findFirst({
+            where: { id: item.product_id, storeId }
+          });
+          if (productExists) {
+            validItems.push(item);
+          } else {
+            console.warn(`[Sales Sync] ⚠️ Skipping item: product ${item.product_id} not found on server`);
           }
         }
-      });
-      syncedCount++;
+
+        await prisma.sale.upsert({
+          where: { storeId_id: { storeId, id: sale.id } },
+          update: {
+            totalAmount: sale.total_amount,
+            discount: sale.discount || 0.0,
+            finalAmount: sale.final_amount,
+            paymentMethod: sale.payment_method || 'CASH',
+            notes: sale.notes,
+            invoiceDate: new Date(sale.invoice_date || new Date()),
+            deviceId: incomingDeviceId,
+          },
+          create: {
+            id: sale.id,
+            storeId,
+            totalAmount: sale.total_amount,
+            discount: sale.discount || 0.0,
+            finalAmount: sale.final_amount,
+            paymentMethod: sale.payment_method || 'CASH',
+            notes: sale.notes,
+            invoiceDate: new Date(sale.invoice_date || new Date()),
+            isSynced: true,
+            deviceId: incomingDeviceId,
+            items: {
+              create: validItems.map((item: any) => ({
+                productId: item.product_id,
+                quantity: item.quantity,
+                unitBuyPriceAtSale: item.unit_buy_price_at_sale,
+                unitSellPriceAtSale: item.unit_sell_price_at_sale,
+                discountAmount: item.discount_amount || 0.0,
+                totalPrice: item.total_price,
+              }))
+            }
+          }
+        });
+        syncedCount++;
+      } catch (saleError: any) {
+        // تخطّي الفاتورة الفاشلة وإكمال الباقي
+        console.error(`[Sales Sync] ⚠️ Skipped sale ${sale.id}: ${saleError.message?.slice(0, 100)}`);
+      }
     }
 
     return NextResponse.json({ success: true, count: syncedCount });
