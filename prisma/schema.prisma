@@ -25,13 +25,6 @@ model Store {
   supplierTransactions SupplierTransaction[]
 }
 
-// ✅ جدول الأجهزة المحظورة عن بُعد
-model BlockedDevice {
-  machineId  String   @id
-  reason     String?
-  blockedAt  DateTime @default(now())
-}
-
 model Category {
   id          Int       @id @default(autoincrement())
   name        String    @unique
