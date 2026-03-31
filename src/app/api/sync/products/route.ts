@@ -16,6 +16,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const storeId = req.headers.get('x-store-id');
+    const deviceId = req.headers.get('x-device-id') || null;
     if (!storeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const body = await req.json();
@@ -57,9 +58,9 @@ export async function POST(req: Request) {
             largeUnit: prod.large_unit,
             piecesPerUnit: prod.pieces_per_unit || 1,
             largeSellPrice: prod.large_sell_price || 0.0,
-            allowPieceSale: prod.allow_piece_sale ?? 1,
             allowLargeSale: prod.allow_large_sale ?? 1,
             updatedAt: new Date(),
+            deviceId: prod.device_id || deviceId,
           },
           create: {
             id: prod.id,
@@ -82,6 +83,7 @@ export async function POST(req: Request) {
             createdAt: new Date(prod.created_at || Date.now()),
             updatedAt: new Date(prod.updated_at || Date.now()),
             isSynced: true,
+            deviceId: prod.device_id || deviceId,
           }
         });
         syncedCount++;

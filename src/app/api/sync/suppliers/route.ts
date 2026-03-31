@@ -5,14 +5,15 @@ import prisma from '@/lib/prisma';
 export async function POST(req: Request) {
   try {
     const storeId = req.headers.get('x-store-id');
+    const deviceId = req.headers.get('x-device-id') || null;
     if (!storeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     const { suppliers } = await req.json();
     let count = 0;
     for (const s of suppliers) {
       await prisma.storeSupplier.upsert({
         where: { storeId_id: { storeId, id: s.id } },
-        update: { name: s.name, phone: s.phone || null, address: s.address || null, notes: s.notes || null, isSynced: true },
-        create: { id: s.id, storeId, name: s.name, phone: s.phone || null, address: s.address || null, notes: s.notes || null, isSynced: true },
+        update: { name: s.name, phone: s.phone || null, address: s.address || null, notes: s.notes || null, isSynced: true, deviceId },
+        create: { id: s.id, storeId, name: s.name, phone: s.phone || null, address: s.address || null, notes: s.notes || null, isSynced: true, deviceId },
       });
       count++;
     }
