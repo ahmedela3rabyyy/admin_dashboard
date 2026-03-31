@@ -1,0 +1,82 @@
+import { NextResponse } from 'next/server';
+import prisma from '@/lib/prisma';
+
+export async function GET(req: Request) {
+  try {
+    const storeId = req.headers.get('x-store-id');
+    if (!storeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const products = await prisma.product.findMany({ where: { storeId } });
+    return NextResponse.json(products);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(req: Request) {
+  try {
+    const storeId = req.headers.get('x-store-id');
+    if (!storeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const body = await req.json();
+    const { products } = body;
+    
+    if (!products || !Array.isArray(products)) {
+        return NextResponse.json({ error: 'Products data must be an array' }, { status: 400 });
+    }
+
+    let syncedCount = 0;
+
+    for (const prod of products) {
+      await prisma.product.upsert({
+        where: { storeId_id: { storeId, id: prod.id } },
+        update: {
+          name: prod.name,
+          category: prod.category,
+          barcode: prod.barcode || null,
+          description: prod.description,
+          buyPrice: prod.buy_price || 0.0,
+          sellPrice: prod.sell_price || 0.0,
+          stockQuantity: prod.stock_quantity || 0,
+          minStockLevel: prod.min_stock_level || 5,
+          unit: prod.unit,
+          location: prod.location,
+          largeUnit: prod.large_unit,
+          piecesPerUnit: prod.pieces_per_unit || 1,
+          largeSellPrice: prod.large_sell_price || 0.0,
+          allowPieceSale: prod.allow_piece_sale ?? 1,
+          allowLargeSale: prod.allow_large_sale ?? 1,
+          updatedAt: new Date(),
+        },
+        create: {
+          id: prod.id,
+          storeId: storeId,
+          name: prod.name,
+          category: prod.category,
+          barcode: prod.barcode || null,
+          description: prod.description,
+          buyPrice: prod.buy_price || 0.0,
+          sellPrice: prod.sell_price || 0.0,
+          stockQuantity: prod.stock_quantity || 0,
+          minStockLevel: prod.min_stock_level || 5,
+          unit: prod.unit,
+          location: prod.location,
+          largeUnit: prod.large_unit,
+          piecesPerUnit: prod.pieces_per_unit || 1,
+          largeSellPrice: prod.large_sell_price || 0.0,
+          allowPieceSale: prod.allow_piece_sale ?? 1,
+          allowLargeSale: prod.allow_large_sale ?? 1,
+          createdAt: new Date(prod.created_at || Date.now()),
+          updatedAt: new Date(prod.updated_at || Date.now()),
+          isSynced: true,
+        }
+      });
+      syncedCount++;
+    }
+
+    return NextResponse.json({ success: true, count: syncedCount });
+  } catch (error: any) {
+    console.error('API /sync/products Error:', error);
+    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+  }
+}

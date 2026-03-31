@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Store {
+  id        String    @id @default(uuid())
+  name      String
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+
+  products             Product[]
+  sales                Sale[]
+  expenses             Expense[]
+  webDeletions         WebDeletion[]
+  employees            Employee[]
+  advances             Advance[]
+  salaryPayments       SalaryPayment[]
+  storeSuppliers       StoreSupplier[]
+  supplierTransactions SupplierTransaction[]
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+}
+
+model Supplier {
+  id         Int       @id @default(autoincrement())
+  name       String
+  phone      String?
+  address    String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+}
+
+model Product {
+  id               Int
+  storeId          String
+  name             String
+  category         String?
+  barcode          String?
+  description      String?
+  buyPrice         Float     @default(0.0)
+  sellPrice        Float     @default(0.0)
+  stockQuantity    Int       @default(0)
+  minStockLevel    Int       @default(5)
+  unit             String?   @default("قطعة")
+  location         String?
+  largeUnit        String?
+  piecesPerUnit    Int       @default(1)
+  largeSellPrice   Float     @default(0.0)
+  allowPieceSale   Int       @default(1)
+  allowLargeSale   Int       @default(1)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  isSynced         Boolean   @default(true)
+  
+  store            Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  saleItems        SaleItem[]
+
+  @@id([storeId, id])
+}
+
+model Sale {
+  id            Int
+  storeId       String
+  invoiceDate   DateTime   @default(now())
+  totalAmount   Float
+  discount      Float      @default(0.0)
+  finalAmount   Float
+  paymentMethod String     @default("CASH")
+  notes         String?
+  isSynced      Boolean    @default(true)
+  deviceId      String?    // ✅ هوية الجهاز الذي أنشأ الفاتورة
+
+  store         Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  items         SaleItem[]
+
+  @@id([storeId, id])
+}
+
+model SaleItem {
+  id                   Int      @id @default(autoincrement())
+  saleId               Int
+  storeId              String
+  productId            Int
+  quantity             Int
+  unitBuyPriceAtSale   Float
+  unitSellPriceAtSale  Float
+  discountAmount       Float    @default(0.0)
+  totalPrice           Float
+
+  sale                 Sale     @relation(fields: [storeId, saleId], references: [storeId, id], onDelete: Cascade)
+  product              Product  @relation(fields: [storeId, productId], references: [storeId, id], onDelete: Restrict)
+}
+
+model Expense {
+  id           Int      
+  storeId      String
+  title        String
+  amount       Float
+  expenseType  String
+  beneficiary  String?
+  expenseDate  DateTime @default(now())
+  notes        String?
+  isSynced     Boolean  @default(true)
+  deviceId     String?  // ✅ هوية الجهاز الذي سجّل المصروف
+
+  store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([storeId, id])
+}
+
+model WebDeletion {
+  id        Int      @id @default(autoincrement())
+  storeId   String
+  tableName String
+  recordId  Int
+  deletedAt DateTime @default(now())
+  confirmed Boolean  @default(false)
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+}
+
+model Employee {
+  id        Int
+  storeId   String
+  name      String
+  phone     String?
+  salary    Float    @default(0.0)
+  joinDate  DateTime @default(now())
+  isSynced  Boolean  @default(true)
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
+
+model Advance {
+  id         Int
+  storeId    String
+  employeeId Int
+  amount     Float
+  date       DateTime @default(now())
+  isDeducted Boolean  @default(false)
+  notes      String?
+  isSynced   Boolean  @default(true)
+
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
+
+model SalaryPayment {
+  id         Int
+  storeId    String
+  employeeId Int
+  amountPaid Float
+  date       DateTime @default(now())
+  notes      String?
+  isSynced   Boolean  @default(true)
+
+  store      Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
+
+model StoreSupplier {
+  id        Int
+  storeId   String
+  name      String
+  phone     String?
+  address   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  isSynced  Boolean  @default(true)
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
+
+model SupplierTransaction {
+  id             Int
+  storeId        String
+  supplierId     Int
+  transType      String
+  amount         Float
+  date           DateTime @default(now())
+  notes          String?
+  attachmentPath String?
+  isSynced       Boolean  @default(true)
+
+  store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
