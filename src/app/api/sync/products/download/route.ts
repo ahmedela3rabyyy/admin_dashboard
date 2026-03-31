@@ -1,22 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
-// Desktop calls this to download products from cloud
+// Desktop calls this to download ALL products from cloud (source of truth)
 export async function GET(req: Request) {
   try {
     const storeId = req.headers.get('x-store-id');
     if (!storeId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { searchParams } = new URL(req.url);
-    const fullSync = searchParams.get('full') === '1';
-
-    // full=1 → جهاز جديد / مزامنة كاملة → ينزّل كل المنتجات
-    // بدون full → ينزّل بس المنتجات المضافة من الويب فقط
-    const products = await prisma.product.findMany({
-      where: fullSync
-        ? { storeId }                         // كل المنتجات
-        : { storeId, isSynced: false },        // الويب فقط
-    });
+    // ✅ كل المنتجات — السحابة هي المرجع الوحيد للكتالوج
+    const products = await prisma.product.findMany({ where: { storeId } });
 
     return NextResponse.json({ products });
   } catch (error: any) {
