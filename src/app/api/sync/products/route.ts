@@ -25,53 +25,69 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Products data must be an array' }, { status: 400 });
     }
 
+    // ✅ ضمان وجود الـ Store قبل أي عملية (يحل مشكلة إعادة deploy على Railway)
+    await prisma.store.upsert({
+      where: { id: storeId },
+      update: {},
+      create: {
+        id: storeId,
+        name: 'المتجر',
+        email: `${storeId}@sync.local`,
+        password: 'auto-sync'
+      }
+    });
+
     let syncedCount = 0;
 
     for (const prod of products) {
-      await prisma.product.upsert({
-        where: { storeId_id: { storeId, id: prod.id } },
-        update: {
-          name: prod.name,
-          category: prod.category,
-          barcode: prod.barcode || null,
-          description: prod.description,
-          buyPrice: prod.buy_price || 0.0,
-          sellPrice: prod.sell_price || 0.0,
-          stockQuantity: prod.stock_quantity || 0,
-          minStockLevel: prod.min_stock_level || 5,
-          unit: prod.unit,
-          location: prod.location,
-          largeUnit: prod.large_unit,
-          piecesPerUnit: prod.pieces_per_unit || 1,
-          largeSellPrice: prod.large_sell_price || 0.0,
-          allowPieceSale: prod.allow_piece_sale ?? 1,
-          allowLargeSale: prod.allow_large_sale ?? 1,
-          updatedAt: new Date(),
-        },
-        create: {
-          id: prod.id,
-          storeId: storeId,
-          name: prod.name,
-          category: prod.category,
-          barcode: prod.barcode || null,
-          description: prod.description,
-          buyPrice: prod.buy_price || 0.0,
-          sellPrice: prod.sell_price || 0.0,
-          stockQuantity: prod.stock_quantity || 0,
-          minStockLevel: prod.min_stock_level || 5,
-          unit: prod.unit,
-          location: prod.location,
-          largeUnit: prod.large_unit,
-          piecesPerUnit: prod.pieces_per_unit || 1,
-          largeSellPrice: prod.large_sell_price || 0.0,
-          allowPieceSale: prod.allow_piece_sale ?? 1,
-          allowLargeSale: prod.allow_large_sale ?? 1,
-          createdAt: new Date(prod.created_at || Date.now()),
-          updatedAt: new Date(prod.updated_at || Date.now()),
-          isSynced: true,
-        }
-      });
-      syncedCount++;
+      try {
+        await prisma.product.upsert({
+          where: { storeId_id: { storeId, id: prod.id } },
+          update: {
+            name: prod.name,
+            category: prod.category,
+            barcode: prod.barcode || null,
+            description: prod.description,
+            buyPrice: prod.buy_price || 0.0,
+            sellPrice: prod.sell_price || 0.0,
+            stockQuantity: prod.stock_quantity || 0,
+            minStockLevel: prod.min_stock_level || 5,
+            unit: prod.unit,
+            location: prod.location,
+            largeUnit: prod.large_unit,
+            piecesPerUnit: prod.pieces_per_unit || 1,
+            largeSellPrice: prod.large_sell_price || 0.0,
+            allowPieceSale: prod.allow_piece_sale ?? 1,
+            allowLargeSale: prod.allow_large_sale ?? 1,
+            updatedAt: new Date(),
+          },
+          create: {
+            id: prod.id,
+            storeId: storeId,
+            name: prod.name,
+            category: prod.category,
+            barcode: prod.barcode || null,
+            description: prod.description,
+            buyPrice: prod.buy_price || 0.0,
+            sellPrice: prod.sell_price || 0.0,
+            stockQuantity: prod.stock_quantity || 0,
+            minStockLevel: prod.min_stock_level || 5,
+            unit: prod.unit,
+            location: prod.location,
+            largeUnit: prod.large_unit,
+            piecesPerUnit: prod.pieces_per_unit || 1,
+            largeSellPrice: prod.large_sell_price || 0.0,
+            allowPieceSale: prod.allow_piece_sale ?? 1,
+            allowLargeSale: prod.allow_large_sale ?? 1,
+            createdAt: new Date(prod.created_at || Date.now()),
+            updatedAt: new Date(prod.updated_at || Date.now()),
+            isSynced: true,
+          }
+        });
+        syncedCount++;
+      } catch (prodError: any) {
+        console.error(`[Products Sync] ⚠️ Skipped product ${prod.id}: ${prodError.message?.slice(0, 100)}`);
+      }
     }
 
     return NextResponse.json({ success: true, count: syncedCount });
