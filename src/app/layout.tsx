@@ -18,13 +18,13 @@ export default async function RootLayout({
   const isLoggedIn = !!token;
 
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
       </head>
-      <body className="antialiased bg-slate-950 text-slate-50 min-h-screen flex flex-col">
+      <body className="antialiased bg-slate-950 text-slate-50 min-h-screen flex flex-col" suppressHydrationWarning>
         {isLoggedIn ? (
           <div className="flex flex-1 h-screen overflow-hidden">
             <Sidebar />

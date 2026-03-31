@@ -49,6 +49,7 @@ export async function POST(req: Request) {
             notes: sale.notes,
             invoiceDate: new Date(sale.invoice_date || new Date()),
             deviceId: incomingDeviceId,
+            shiftId: sale.shiftId || null, // ✅ NEW
           },
           create: {
             id: sale.id,
@@ -61,6 +62,7 @@ export async function POST(req: Request) {
             invoiceDate: new Date(sale.invoice_date || new Date()),
             isSynced: true,
             deviceId: incomingDeviceId,
+            shiftId: sale.shiftId || null, // ✅ NEW
             items: {
               create: validItems.map((item: any) => ({
                 productId: item.product_id,

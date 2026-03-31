@@ -23,6 +23,8 @@ model Store {
   salaryPayments       SalaryPayment[]
   storeSuppliers       StoreSupplier[]
   supplierTransactions SupplierTransaction[]
+  appUsers             AppUser[]
+  shifts               Shift[]
 }
 
 model Category {
@@ -80,8 +82,10 @@ model Sale {
   notes         String?
   isSynced      Boolean    @default(true)
   deviceId      String?    // ✅ هوية الجهاز الذي أنشأ الفاتورة
+  shiftId       Int?       // ✅ ربط الفاتورة بالوردية
 
   store         Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shift         Shift?     @relation(fields: [storeId, shiftId], references: [storeId, id], onDelete: Cascade)
   items         SaleItem[]
 
   @@id([storeId, id])
@@ -201,5 +205,46 @@ model SupplierTransaction {
   deviceId       String?
 
   store          Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@id([storeId, id])
+}
+
+// ✅ NEW: مستخدمي نظام الديسكتوب (كاشيرات ومديرين)
+model AppUser {
+  id        Int
+  storeId   String
+  username  String
+  fullName  String
+  role      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  deviceId  String?
+
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shifts    Shift[]
+
+  @@id([storeId, id])
+}
+
+// ✅ NEW: نوبات العمل (تقفيل اليومية)
+model Shift {
+  id            Int
+  storeId       String
+  userId        Int
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  startCash     Float    @default(0.0)
+  totalSales    Float    @default(0.0)
+  totalExpenses Float    @default(0.0)
+  netCash       Float    @default(0.0)
+  actualCash    Float?
+  notes         String?
+  isSynced      Boolean  @default(true)
+  deviceId      String?
+  salesCount    Int      @default(0) // ✅ عدد الفواتير في الوردية
+
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user          AppUser  @relation(fields: [storeId, userId], references: [storeId, id], onDelete: Cascade)
+  sales         Sale[]
+
   @@id([storeId, id])
 }
