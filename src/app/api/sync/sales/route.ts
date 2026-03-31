@@ -73,6 +73,22 @@ export async function POST(req: Request) {
             }
           }
         });
+
+        // ✅ خصم المخزون من المنتجات على السحابة عند إنشاء فاتورة جديدة
+        // نتحقق أولاً إن الفاتورة فعلاً اتأنشئت (مش update)
+        const existingItems = await prisma.saleItem.findMany({
+          where: { saleId: sale.id, sale: { storeId } }
+        });
+        // لو عدد الـ items == validItems يعني create حصل
+        if (existingItems.length === validItems.length) {
+          for (const item of validItems) {
+            await prisma.product.updateMany({
+              where: { id: item.product_id, storeId },
+              data: { stockQuantity: { decrement: item.quantity } }
+            });
+          }
+        }
+
         syncedCount++;
       } catch (saleError: any) {
         // تخطّي الفاتورة الفاشلة وإكمال الباقي
