@@ -81,13 +81,20 @@ export async function POST(req: Request) {
         const existingItems = await prisma.saleItem.findMany({
           where: { saleId: sale.id, sale: { storeId } }
         });
-        // لو عدد الـ items == validItems يعني create حصل
+        
         if (existingItems.length === validItems.length) {
           for (const item of validItems) {
-            await prisma.product.updateMany({
-              where: { id: item.product_id, storeId },
-              data: { stockQuantity: { decrement: item.quantity } }
+            // جلب المنتج والخصم منه مع ضمان عدم النزول تحت الصفر
+            const prod = await prisma.product.findFirst({
+                where: { id: item.product_id, storeId }
             });
+            if (prod) {
+                const newQty = Math.max(0, (prod.stockQuantity || 0) - item.quantity);
+                await prisma.product.update({
+                    where: { storeId_id: { storeId, id: item.product_id } },
+                    data: { stockQuantity: newQty }
+                });
+            }
           }
         }
 
