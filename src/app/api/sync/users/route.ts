@@ -16,6 +16,13 @@ export async function POST(req: Request) {
 
     let syncedCount = 0;
 
+    // ✅ ضمان وجود الـ Store
+    await prisma.store.upsert({
+      where: { id: storeId },
+      update: {},
+      create: { id: storeId, name: 'المتجر', email: `${storeId}@sync.local`, password: 'auto-sync' }
+    });
+
     for (const u of users) {
       try {
         await prisma.appUser.upsert({
