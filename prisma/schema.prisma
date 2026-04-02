@@ -25,6 +25,7 @@ model Store {
   supplierTransactions SupplierTransaction[]
   appUsers             AppUser[]
   shifts               Shift[]
+  saleReturns           SaleReturn[]
 }
 
 model Category {
@@ -67,6 +68,7 @@ model Product {
   
   store            Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   saleItems        SaleItem[]
+  saleReturnItems  SaleReturnItem[]
 
   @@id([storeId, id])
 }
@@ -87,6 +89,7 @@ model Sale {
   store         Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   shift         Shift?     @relation(fields: [storeId, shiftId], references: [storeId, id], onDelete: Cascade)
   items         SaleItem[]
+  returns       SaleReturn[]
 
   @@id([storeId, id])
 }
@@ -106,6 +109,38 @@ model SaleItem {
   product              Product  @relation(fields: [storeId, productId], references: [storeId, id], onDelete: Restrict)
 }
 
+model SaleReturn {
+  id          Int
+  storeId     String
+  saleId      Int
+  totalRefund Float
+  returnDate  DateTime @default(now())
+  isSynced    Boolean  @default(true)
+  deviceId    String?
+  shiftId     Int?
+
+  store       Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shift       Shift?   @relation(fields: [storeId, shiftId], references: [storeId, id], onDelete: Cascade)
+  sale        Sale     @relation(fields: [storeId, saleId], references: [storeId, id], onDelete: Cascade)
+  items       SaleReturnItem[]
+
+  @@id([storeId, id])
+}
+
+model SaleReturnItem {
+  id                   Int      @id @default(autoincrement())
+  returnId             Int
+  saleItemId           Int?     // ✅ ربط القطعة المرتجعة بقطعة المبيعات الأصلية (اختياري للمزامنة)
+  storeId              String
+  productId            Int
+  quantity             Int
+  unitSellPriceAtSale  Float
+  refundAmount         Float
+
+  return               SaleReturn @relation(fields: [storeId, returnId], references: [storeId, id], onDelete: Cascade)
+  product              Product    @relation(fields: [storeId, productId], references: [storeId, id], onDelete: Restrict)
+}
+
 model Expense {
   id           Int      
   storeId      String
@@ -119,6 +154,8 @@ model Expense {
   deviceId     String?  // ✅ هوية الجهاز الذي سجّل المصروف
 
   store        Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shift        Shift?   @relation(fields: [storeId, shiftId], references: [storeId, id], onDelete: Cascade)
+  shiftId      Int?
 
   @@id([storeId, id])
 }
@@ -245,6 +282,8 @@ model Shift {
   store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
   user          AppUser  @relation(fields: [storeId, userId], references: [storeId, id], onDelete: Cascade)
   sales         Sale[]
+  expenses      Expense[]
+  saleReturns   SaleReturn[]
 
   @@id([storeId, id])
 }

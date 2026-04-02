@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, TrendingDown, Package, DollarSign, ShoppingBag, Calendar, ArrowUpLeft, ArrowDownLeft, Wallet, PieChart, Award } from 'lucide-react';
+import Link from 'next/link';
+import { BarChart3, TrendingUp, TrendingDown, Package, DollarSign, ShoppingBag, Calendar, ArrowUpLeft, ArrowDownLeft, Wallet, PieChart, Award, RotateCcw } from 'lucide-react';
 
 export default function ReportsPage() {
   const [data, setData] = useState<any>(null);
@@ -176,6 +177,55 @@ export default function ReportsPage() {
               })}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Recent Returns Section */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+        <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <span className="w-1.5 h-6 bg-rose-500 rounded-full"></span>
+            <RotateCcw className="h-5 w-5 text-rose-400" />
+            آخر المرتجعات
+          </h3>
+          <Link href="/returns" className="text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1">
+            عرض الكل
+            <ArrowUpLeft className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-right border-collapse">
+            <thead>
+              <tr className="bg-slate-950/30">
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">رقم الفاتورة</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">التاريخ</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">المبلغ المسترد</th>
+                <th className="px-6 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">الحالة</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800/50">
+              {data.recentReturns?.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-slate-500 text-sm">لا توجد مرتجعات مسجلة مؤخراً</td>
+                </tr>
+              )}
+              {data.recentReturns?.map((r: any) => (
+                <tr key={r.id} className="hover:bg-slate-800/20 transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-white">#{r.saleId}</td>
+                  <td className="px-6 py-4 text-xs text-slate-400">
+                    {new Date(r.returnDate).toLocaleDateString('ar-EG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-rose-400">{r.totalRefund.toFixed(2)} ج.م</td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                      <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"></div>
+                      مؤكد
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

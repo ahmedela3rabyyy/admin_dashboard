@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   Users2, Search, Calendar, Clock, DollarSign, ArrowUpRight, 
   ArrowDownRight, AlertCircle, CheckCircle2, ChevronRight,
-  TrendingDown, TrendingUp, UserCheck
+  TrendingDown, TrendingUp, UserCheck, FileText, X, Printer, Eye
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -18,26 +18,73 @@ interface Shift {
   netCash: number;
   actualCash: number | null;
   notes: string | null;
-  salesCount: number; // ✅ NEW
+  salesCount: number;
   user: {
     fullName: string;
     username: string;
     role: string;
   };
-  sales?: { // ✅ NEW
+  sales?: {
     id: number;
     totalAmount: number;
     finalAmount: number;
     paymentMethod: string;
     invoiceDate: string;
+    items: {
+      quantity: number;
+      totalPrice: number;
+      product: { name: string };
+    }[];
+    returns: {
+        id: number;
+        totalRefund: number;
+        returnDate: string;
+    }[];
+  }[];
+  expenses?: {
+    id: number;
+    title: string;
+    amount: number;
+    expenseType: string;
+    expenseDate: string;
+  }[];
+  saleReturns?: {
+    id: number;
+    totalRefund: number;
+    returnDate: string;
+    sale?: { id: number };
   }[];
 }
+
+const ReceiptModal = ({ sale, onClose }: { sale: any; onClose: () => void }) => (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-lg font-bold text-white">تفاصيل الفاتورة #{sale.id}</h3>
+        <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={20} /></button>
+      </div>
+      <div className="space-y-4">
+        {sale.items.map((item: any, i: number) => (
+          <div key={i} className="flex justify-between text-sm">
+            <span className="text-slate-300">{item.product.name} x{item.quantity}</span>
+            <span className="text-white font-mono">{item.totalPrice.toFixed(2)}</span>
+          </div>
+        ))}
+        <div className="border-t border-slate-800 pt-4 flex justify-between font-bold text-lg">
+          <span className="text-slate-400">الإجمالي</span>
+          <span className="text-emerald-400">{sale.finalAmount.toFixed(2)} ج.م</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function ShiftsPage() {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [expandedShift, setExpandedShift] = useState<number | null>(null); // ✅ NEW
+  const [selectedSale, setSelectedSale] = useState<any | null>(null);
+  const [expandedShift, setExpandedShift] = useState<number | null>(null);
 
   const fetchShifts = useCallback(async () => {
     try {
@@ -159,12 +206,33 @@ export default function ShiftsPage() {
                         "px-6 py-2 rounded-xl border flex flex-col items-center",
                         !isFinished ? "bg-amber-500/10 border-amber-500/20" : "bg-emerald-500/10 border-emerald-500/20"
                       )}>
-                        <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-tighter">صافي الخزينة</p>
+                        <p className="text-[10px] text-slate-500 mb-1 uppercase tracking-tighter">صافي الخزينة المتوقع</p>
                         <p className={clsx("text-lg font-black", !isFinished ? "text-amber-400" : "text-emerald-400")}>
                           {shift.netCash.toFixed(2)} ج.م
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Returns & Expenses Summary (Small) */}
+                  <div className="px-6 pb-4 flex items-center gap-4">
+                     {(() => {
+                        const allReturnsCount = shift.saleReturns?.length || 0;
+                        const allReturnsTotal = shift.saleReturns?.reduce((acc, r) => acc + r.totalRefund, 0) || 0;
+                        if (allReturnsCount === 0) return null;
+                        return (
+                           <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-500/10 rounded-lg border border-rose-500/20">
+                             <TrendingDown size={14} className="text-rose-400" />
+                             <span className="text-[11px] font-bold text-rose-400">{allReturnsCount} مرتجع ({allReturnsTotal.toFixed(2)})</span>
+                           </div>
+                        );
+                     })()}
+                     {shift.expenses && shift.expenses.length > 0 && (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                          <AlertCircle size={14} className="text-amber-400" />
+                          <span className="text-[11px] font-bold text-amber-400">{shift.expenses.length} مصروفات</span>
+                        </div>
+                     )}
                   </div>
 
                   {/* Discrepancy Alert */}
@@ -225,43 +293,171 @@ export default function ShiftsPage() {
                     </button>
                   </div>
 
-                  {/* Invoice Details List */}
-                  {isExpanded && shift.sales && (
-                    <div className="mt-6 animate-in slide-in-from-top-4 duration-300">
-                      <div className="bg-slate-950/50 rounded-2xl border border-slate-800 overflow-hidden">
-                        <table className="w-full text-right">
-                          <thead className="bg-slate-900/50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-800">
-                            <tr>
-                              <th className="px-6 py-3">رقم الفاتورة</th>
-                              <th className="px-6 py-3">الوقت</th>
-                              <th className="px-6 py-3">طريقة الدفع</th>
-                              <th className="px-6 py-3 text-left">المبلغ الصافي</th>
-                            </tr>
-                          </thead>
-                          <tbody className="text-sm divide-y divide-slate-800/50">
-                            {shift.sales.length > 0 ? shift.sales.map(sale => (
-                              <tr key={sale.id} className="hover:bg-white/5 transition-colors">
-                                <td className="px-6 py-4 font-mono text-blue-400">#{sale.id}</td>
-                                <td className="px-6 py-4 text-slate-400 text-xs">
-                                  {new Date(sale.invoiceDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
-                                </td>
-                                <td className="px-6 py-4">
-                                  <span className={clsx(
-                                    "px-2 py-1 rounded-md text-[10px] font-bold",
-                                    sale.paymentMethod === 'CASH' ? "bg-emerald-500/10 text-emerald-400" : "bg-blue-500/10 text-blue-400"
-                                  )}>
-                                    {sale.paymentMethod === 'CASH' ? 'كاش' : 'فيزا/محفظة'}
-                                  </span>
-                                </td>
-                                <td className="px-6 py-4 text-left font-bold text-white">{sale.finalAmount.toFixed(2)} ج.م</td>
+                  {/* Detailed Analysis (Expanded) */}
+                  {isExpanded && (
+                    <div className="mt-8 animate-in slide-in-from-top-4 duration-500 border-t border-slate-800 pt-8">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        
+                        {/* 1. Payment Mix Analytics */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                             <DollarSign size={16} className="text-emerald-400" /> توزيع طرق الدفع
+                          </h4>
+                          <div className="bg-slate-950/40 rounded-2xl p-5 border border-slate-800/50 space-y-4">
+                             {(() => {
+                               const cash = shift.sales?.filter(s => s.paymentMethod === 'CASH').reduce((acc, s) => acc + s.finalAmount, 0) || 0;
+                               const visa = shift.sales?.filter(s => s.paymentMethod === 'VISA').reduce((acc, s) => acc + s.finalAmount, 0) || 0;
+                               const wallet = shift.sales?.filter(s => s.paymentMethod === 'WALLET').reduce((acc, s) => acc + s.finalAmount, 0) || 0;
+                               const total = cash + visa + wallet || 1;
+                               return (
+                                 <div className="space-y-4">
+                                   <div className="space-y-2">
+                                     <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">نقدي (كاش)</span>
+                                       <span className="text-emerald-400 font-bold">{cash.toFixed(2)} ج.م</span>
+                                     </div>
+                                     <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                       <div className="h-full bg-emerald-500" style={{ width: `${(cash/total)*100}%` }} />
+                                     </div>
+                                   </div>
+                                   <div className="space-y-2">
+                                     <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">فيزا / بطاقة</span>
+                                       <span className="text-blue-400 font-bold">{visa.toFixed(2)} ج.م</span>
+                                     </div>
+                                     <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                       <div className="h-full bg-blue-500" style={{ width: `${(visa/total)*100}%` }} />
+                                     </div>
+                                   </div>
+                                    <div className="space-y-2">
+                                     <div className="flex justify-between text-xs">
+                                       <span className="text-slate-500">محفظة إلكترونية</span>
+                                       <span className="text-purple-400 font-bold">{wallet.toFixed(2)} ج.م</span>
+                                     </div>
+                                     <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+                                       <div className="h-full bg-purple-500" style={{ width: `${(wallet/total)*100}%` }} />
+                                     </div>
+                                   </div>
+                                 </div>
+                               );
+                             })()}
+                          </div>
+                        </div>
+
+                        {/* 2. Top Products Information */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                             <TrendingUp size={16} className="text-blue-400" /> المنتجات الأكثر طلباً
+                          </h4>
+                          <div className="bg-slate-950/40 rounded-2xl p-5 border border-slate-800/50">
+                             {(() => {
+                               const products: Record<string, number> = {};
+                               shift.sales?.forEach(s => s.items.forEach(i => {
+                                 const name = i.product.name;
+                                 products[name] = (products[name] || 0) + i.quantity;
+                               }));
+                               const sorted = Object.entries(products).sort((a,b) => b[1] - a[1]).slice(0, 5);
+                               
+                               if (sorted.length === 0) return <p className="text-xs text-slate-600 italic py-4">لا توجد أصناف في هذه الوردية</p>;
+                               
+                               return (
+                                 <div className="space-y-3">
+                                   {sorted.map(([name, qty]) => (
+                                     <div key={name} className="flex items-center justify-between group/prod">
+                                       <span className="text-xs text-slate-400 truncate max-w-[150px] group-hover/prod:text-white transition-colors">{name}</span>
+                                       <span className="px-2 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px] font-bold">{qty} قطعة</span>
+                                     </div>
+                                   ))}
+                                 </div>
+                               );
+                             })()}
+                          </div>
+                        </div>
+
+                        {/* 3. Expenses Breakdown */}
+                        <div className="space-y-4">
+                          <h4 className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                             <ArrowDownRight size={16} className="text-rose-400" /> المصروفات بالتفصيل
+                          </h4>
+                          <div className="bg-slate-950/40 rounded-2xl border border-slate-800/50 overflow-hidden max-h-[220px] overflow-y-auto custom-scrollbar">
+                             {shift.expenses && shift.expenses.length > 0 ? (
+                               <table className="w-full text-right text-xs">
+                                 <thead className="bg-slate-900/50 text-slate-500 font-bold sticky top-0">
+                                   <tr>
+                                      <th className="px-4 py-2">البيان</th>
+                                      <th className="px-4 py-2">القيمة</th>
+                                   </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-slate-800/30">
+                                   {shift.expenses.map(exp => (
+                                      <tr key={exp.id} className="hover:bg-rose-500/5 transition-colors">
+                                        <td className="px-4 py-2.5 text-slate-400">{exp.title}</td>
+                                        <td className="px-4 py-2.5 text-rose-400 font-bold">{exp.amount.toFixed(2)}</td>
+                                      </tr>
+                                   ))}
+                                 </tbody>
+                               </table>
+                             ) : (
+                                <p className="text-xs text-slate-600 italic p-6 text-center">لا توجد مصروفات مسجلة</p>
+                             )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Transaction Ledger */}
+                      <div className="mt-10 space-y-4">
+                        <h4 className="text-sm font-bold text-slate-400">سجل الفواتير التفصيلي</h4>
+                        <div className="bg-slate-950/50 rounded-2xl border border-slate-800 overflow-hidden">
+                          <table className="w-full text-right">
+                            <thead className="bg-slate-900/50 text-[10px] uppercase font-bold text-slate-500 border-b border-slate-800">
+                              <tr>
+                                <th className="px-6 py-3">الفاتورة</th>
+                                <th className="px-6 py-3">الوقت</th>
+                                <th className="px-6 py-3">طريقة الدفع</th>
+                                <th className="px-6 py-3">الأصناف</th>
+                                <th className="px-6 py-3">المبلغ</th>
+                                <th className="px-6 py-3 text-left">الإجراء</th>
                               </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-8 text-center text-slate-500 italic">لا توجد مبيعات مسجلة في هذه الوردية</td>
+                            </thead>
+                            <tbody className="text-sm divide-y divide-slate-800/50">
+                              {shift.sales && shift.sales.length > 0 ? shift.sales.map(sale => (
+                                <tr key={sale.id} className="hover:bg-white/5 transition-colors group/row">
+                                  <td className="px-6 py-4 font-mono text-blue-400 text-xs">#{sale.id}</td>
+                                  <td className="px-6 py-4 text-slate-400 text-[10px]">
+                                    {new Date(sale.invoiceDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className={clsx(
+                                      "px-2 py-1 rounded-md text-[10px] font-bold",
+                                      sale.paymentMethod === 'CASH' ? "bg-emerald-500/10 text-emerald-400" : (sale.paymentMethod === 'VISA' ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400")
+                                    )}>
+                                      {sale.paymentMethod === 'CASH' ? 'كاش' : (sale.paymentMethod === 'VISA' ? 'فيزا' : 'محفظة')}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                      <p className="text-[10px] text-slate-500 truncate max-w-sm">
+                                        {sale.items.map(i => `${i.product.name} (x${i.quantity})`).join(', ')}
+                                      </p>
+                                  </td>
+                                  <td className="px-6 py-4 font-bold text-white text-xs whitespace-nowrap">{sale.finalAmount.toFixed(2)} ج.م</td>
+                                  <td className="px-6 py-4 text-left">
+                                      <button 
+                                        onClick={() => setSelectedSale(sale)}
+                                        className="p-2 bg-slate-800 hover:bg-blue-600/20 text-slate-400 hover:text-blue-400 rounded-lg transition-all flex items-center gap-2 group/btn"
+                                      >
+                                        <Eye size={14} className="group-hover/btn:scale-110 transition-transform" />
+                                        <span className="text-[10px] hidden group-hover/row:inline">عرض</span>
+                                      </button>
+                                  </td>
                                 </tr>
-                            )}
-                          </tbody>
-                        </table>
+                              )) : (
+                                  <tr>
+                                      <td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">لا توجد مبيعات مسجلة في هذه الوردية</td>
+                                  </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -271,6 +467,113 @@ export default function ShiftsPage() {
           })
         )}
       </div>
+
+      {/* Invoice Details Modal */}
+      {selectedSale && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl relative animate-in zoom-in-95 duration-300">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-xl">
+                  <FileText className="text-blue-400" size={20} />
+                </div>
+                <div>
+                   <h3 className="text-lg font-bold text-white">تفاصيل الفاتورة</h3>
+                   <p className="text-[10px] text-slate-500 font-mono">#{selectedSale.id}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedSale(null)}
+                className="p-2 hover:bg-slate-800 text-slate-500 hover:text-white rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body (Receipt Style) */}
+            <div className="p-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              <div className="bg-white p-8 rounded-xl shadow-sm text-slate-900 print:shadow-none space-y-6 min-h-[400px]">
+                {/* Store Branding (Sample) */}
+                <div className="text-center space-y-1">
+                   <h2 className="text-xl font-black uppercase tracking-widest text-slate-950">نظام المكتبي</h2>
+                   <p className="text-[10px] text-slate-500 font-bold">نموذج معاينة فاتورة إلكترونية</p>
+                </div>
+
+                <div className="border-y border-dashed border-slate-300 py-3 flex justify-between text-[11px] font-bold text-slate-600">
+                   <span>التاريخ: {new Date(selectedSale.invoiceDate).toLocaleDateString('ar-EG')}</span>
+                   <span>الوقت: {new Date(selectedSale.invoiceDate).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+
+                {/* Items Table */}
+                <table className="w-full text-right text-xs">
+                  <thead className="border-b border-slate-200">
+                    <tr>
+                      <th className="py-2 text-slate-500 font-bold">الصنف</th>
+                      <th className="py-2 text-center text-slate-500 font-bold">الكمية</th>
+                      <th className="py-2 text-left text-slate-500 font-bold">الإجمالي</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedSale.items.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="py-3 font-medium text-slate-800">{item.product.name}</td>
+                        <td className="py-3 text-center font-bold text-slate-600">{item.quantity}</td>
+                        <td className="py-3 text-left font-bold text-slate-950">{item.totalPrice.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Totals */}
+                <div className="border-t border-slate-200 pt-4 space-y-2">
+                  <div className="flex justify-between text-[11px] text-slate-500 font-bold">
+                    <span>المجموع الفرعي</span>
+                    <span>{selectedSale.totalAmount.toFixed(2)} ج.م</span>
+                  </div>
+                  {selectedSale.totalAmount > selectedSale.finalAmount && (
+                    <div className="flex justify-between text-[11px] text-rose-500 font-bold">
+                      <span>الخصم</span>
+                      <span>-{(selectedSale.totalAmount - selectedSale.finalAmount).toFixed(2)} ج.م</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-lg font-black text-slate-950 pt-2">
+                    <span>الإجمالي</span>
+                    <span>{selectedSale.finalAmount.toFixed(2)} ج.م</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 flex justify-between items-center text-[10px] font-bold text-slate-600">
+                   <span>طريقة الدفع:</span>
+                   <span className="px-2 py-0.5 bg-slate-200 rounded uppercase">
+                     {selectedSale.paymentMethod === 'CASH' ? 'نقدي' : (selectedSale.paymentMethod === 'VISA' ? 'فيزا' : 'محفظة')}
+                   </span>
+                </div>
+
+                <div className="text-center pt-6">
+                   <p className="text-[10px] text-slate-400 font-bold">شكراً لثقتكم بنا</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-800 flex gap-4 bg-slate-900/50">
+               <button 
+                onClick={() => window.print()}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+               >
+                 <Printer size={18} /> طباعة الفاتورة
+               </button>
+               <button 
+                onClick={() => setSelectedSale(null)}
+                className="px-6 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-2xl transition-all"
+               >
+                 إغلاق
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

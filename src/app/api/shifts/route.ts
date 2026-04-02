@@ -32,16 +32,41 @@ export async function GET() {
           }
         },
         sales: {
-          select: {
-            id: true,
-            totalAmount: true,
-            finalAmount: true,
-            paymentMethod: true,
-            invoiceDate: true
+          include: {
+            items: {
+              include: {
+                product: {
+                    select: { name: true }
+                }
+              }
+            },
+            returns: {
+                select: {
+                    id: true,
+                    totalRefund: true,
+                    returnDate: true
+                }
+            }
           },
           orderBy: {
             invoiceDate: 'desc'
           }
+        },
+        expenses: {
+          select: {
+            id: true,
+            title: true,
+            amount: true,
+            expenseType: true,
+            expenseDate: true
+          }
+        },
+        saleReturns: {
+            select: {
+                id: true,
+                totalRefund: true,
+                returnDate: true
+            }
         }
       },
       orderBy: {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut, Settings, BarChart3, Bell, Menu, X, Users2 } from "lucide-react";
+import { LayoutDashboard, Package, ShoppingCart, Receipt, LogOut, Settings, BarChart3, Bell, Menu, X, Users2, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
 import { useState, useEffect } from "react";
 
@@ -11,6 +11,7 @@ const navItems = [
   { name: "يوميات الموظفين", href: "/shifts", icon: Users2 },
   { name: "التقارير", href: "/reports", icon: BarChart3 },
   { name: "المبيعات", href: "/sales", icon: ShoppingCart },
+  { name: "المرتجعات", href: "/returns", icon: RotateCcw },
   { name: "المنتجات", href: "/products", icon: Package },
   { name: "المصروفات", href: "/expenses", icon: Receipt },
   { name: "الإشعارات", href: "/notifications", icon: Bell },

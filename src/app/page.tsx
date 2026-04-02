@@ -22,9 +22,32 @@ export default async function DashboardPage() {
   const totalSalesAgg = await prisma.sale.aggregate({ where: { storeId }, _sum: { finalAmount: true }, _count: true });
   const totalProducts = await prisma.product.count({ where: { storeId } });
   const lowStockProducts = await prisma.product.count({ where: { storeId, stockQuantity: { lte: 5 } } });
+  const totalReturnsAgg = await prisma.saleReturn.aggregate({ where: { storeId }, _sum: { totalRefund: true } });
   const totalExpensesAgg = await prisma.expense.aggregate({ where: { storeId }, _sum: { amount: true } });
 
-  const totalRevenue = totalSalesAgg._sum.finalAmount || 0;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const todaySalesAgg = await prisma.sale.aggregate({
+    where: { storeId, invoiceDate: { gte: today } },
+    _sum: { finalAmount: true },
+    _count: true
+  });
+  const todayReturnsAgg = await prisma.saleReturn.aggregate({
+    where: { storeId, returnDate: { gte: today } },
+    _sum: { totalRefund: true }
+  });
+  const todayExpensesAgg = await prisma.expense.aggregate({
+    where: { storeId, expenseDate: { gte: today } },
+    _sum: { amount: true }
+  });
+
+  const todayRevenue = (todaySalesAgg._sum.finalAmount || 0) - (todayReturnsAgg._sum.totalRefund || 0);
+  const todayProfit = todayRevenue - (todayExpensesAgg._sum.amount || 0);
+  const todaySalesCount = todaySalesAgg._count || 0;
+
+  const totalReturns = totalReturnsAgg._sum.totalRefund || 0;
+  const totalRevenue = (totalSalesAgg._sum.finalAmount || 0) - totalReturns;
   const totalExpenses = totalExpensesAgg._sum.amount || 0;
   const netProfit = totalRevenue - totalExpenses;
   const totalSalesCount = totalSalesAgg._count || 0;
@@ -38,9 +61,18 @@ export default async function DashboardPage() {
           <h2 className="text-3xl font-bold tracking-tight text-white">مرحباً، {store?.name || 'مدير النظام'} 👋</h2>
           <p className="text-slate-400 mt-1">ملخص شامل لأداء مكتبتك اليوم</p>
         </div>
-        <div className="hidden md:flex items-center gap-2 text-xs text-slate-500 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
-          <Clock className="h-3 w-3" />
-          آخر تحديث: {new Date().toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+        <div className="hidden md:flex items-center gap-4">
+           <div className="flex flex-col items-end">
+              <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">ملخص اليوم</span>
+              <div className="flex gap-3 text-xs font-mono">
+                 <span className="text-emerald-400">مبيعات: {todayRevenue.toFixed(2)}</span>
+                 <span className="text-blue-400">فواتير: {todaySalesCount}</span>
+              </div>
+           </div>
+           <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-full">
+            <Clock className="h-3 w-3" />
+            تلقائي: {new Date().toLocaleString('ar-EG', { hour: '2-digit', minute: '2-digit' })}
+          </div>
         </div>
       </div>
 

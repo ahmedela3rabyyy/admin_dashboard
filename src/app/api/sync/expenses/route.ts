@@ -34,6 +34,7 @@ export async function POST(req: Request) {
           beneficiary: exp.beneficiary,
           expenseDate: new Date(exp.expense_date || new Date()),
           notes: exp.notes,
+          shiftId: exp.shiftId || null,
           deviceId: incomingDeviceId, // ✅
         },
         create: {
@@ -45,6 +46,7 @@ export async function POST(req: Request) {
           beneficiary: exp.beneficiary,
           expenseDate: new Date(exp.expense_date || new Date()),
           notes: exp.notes,
+          shiftId: exp.shiftId || null,
           isSynced: true,
           deviceId: incomingDeviceId, // ✅
         }
